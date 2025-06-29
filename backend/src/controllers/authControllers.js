@@ -1,5 +1,6 @@
 import User from "../models/User.js";
 import generateToken from "../utility/jwtToken.js";
+import { upsertStreamUser } from "../lib/stream.js";
 
 // Signup Controller
 // also create user in stream
@@ -34,7 +35,15 @@ export const signup = async (req, res) => {
             fullName,
             profilePic: randomAvatar,
         });
-
+        try{
+            await upsertStreamUser({
+            id:newUser._id.toString(),
+            name:newUser.fullName,
+            image:newUser.profilePic || "",
+        });
+        }catch(error){
+            console.log("error upserting user : ",error);
+        }
         const token = generateToken(newUser._id);
         res.cookie("jwt", token, {
             maxAge: 2 * 24 * 60 * 60 * 1000,
@@ -90,5 +99,6 @@ export const login = async (req, res) => {
 
 // Logout Controller
 export const logout = (req, res) => {
-    res.send('logout route');
+    res.clearCookie("jwt");
+    res.status(200).json({success:true,message:"logout successfully"});
 };
