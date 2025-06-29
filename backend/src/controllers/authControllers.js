@@ -1,6 +1,7 @@
 import User from "../models/User.js";
-import generateToken from "../utility/jwtToken.js";
+import {generateToken} from "../utility/jwtToken.js";
 import { upsertStreamUser } from "../lib/stream.js";
+
 
 // Signup Controller
 export const signup = async (req, res) => {
@@ -102,4 +103,55 @@ export const login = async (req, res) => {
 export const logout = (req, res) => {
     res.clearCookie("jwt");
     res.status(200).json({ success: true, message: "Logout successful" });
+};
+
+
+
+export const onboard = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { fullName, bio, nativeLanguage, learnLanguage, location } = req.body;
+
+        // Check for missing fields
+        const missingFields = [];
+        if (!fullName) missingFields.push("fullName");
+        if (!bio) missingFields.push("bio");
+        if (!nativeLanguage) missingFields.push("nativeLanguage");
+        if (!learnLanguage) missingFields.push("learnLanguage");
+        if (!location) missingFields.push("location");
+
+        if (missingFields.length > 0) {
+            return res.status(400).json({
+                message: "All fields are required",
+                missingFields: missingFields,
+            });
+        }
+
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            {
+                fullName,
+                bio,
+                nativeLanguage,
+                learnLanguage,
+                location,
+                isOnboard: true, // ensure field name matches your schema
+            },
+            { new: true }
+        );
+
+        if (!updatedUser) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Onboarding completed successfully",
+            user: updatedUser,
+        });
+
+    } catch (error) {
+        console.error("Onboarding error:", error);
+        res.status(500).json({ message: "Server error during onboarding" });
+    }
 };
