@@ -52,9 +52,41 @@ export const signup = async (req, res) => {
 };
 
 // Login Controller (empty for now)
-export const login = (req, res) => {
-    res.send('login route');
+
+export const login = async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+        if (!email || !password) {
+            return res.status(400).json({ message: "All fields are required" });
+        }
+
+        const existingUser = await User.findOne({ email });
+        if (!existingUser) {
+            return res.status(400).json({ message: "No user with this email, please signup" });
+        }
+
+        const isPasswordCorrect = await existingUser.matchPassword(password);
+        if (!isPasswordCorrect) {
+            return res.status(401).json({ message: "Invalid email or password" });
+        }
+
+        const token = generateToken(existingUser._id);
+        res.cookie("jwt", token, {
+            maxAge: 2 * 24 * 60 * 60 * 1000, // 2 days
+            httpOnly: true,
+            sameSite: "strict",
+            secure: process.env.NODE_ENV === 'production'
+        });
+
+        return res.status(200).json({ success: true, user: existingUser });
+
+    } catch (error) {
+        console.error("Login error:", error);
+        res.status(500).json({ message: "Server error. Please try again later." });
+    }
 };
+
 
 // Logout Controller
 export const logout = (req, res) => {
