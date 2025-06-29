@@ -1,0 +1,12 @@
+import express from 'express';
+import dotenv from 'dotenv';
+const app=express();
+dotenv.config();
+const PORT=process.env.PORT;
+import authRoutes from './routes/authRoutes.js';
+app.use('/api/auth',authRoutes);
+
+
+app.listen(PORT,()=>{
+    console.log(`server running on port ${PORT}`);
+})
