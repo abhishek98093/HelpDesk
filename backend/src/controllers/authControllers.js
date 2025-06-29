@@ -3,7 +3,6 @@ import generateToken from "../utility/jwtToken.js";
 import { upsertStreamUser } from "../lib/stream.js";
 
 // Signup Controller
-// also create user in stream
 export const signup = async (req, res) => {
     const { email, password, fullName } = req.body;
 
@@ -31,37 +30,40 @@ export const signup = async (req, res) => {
 
         const newUser = await User.create({
             email,
-            password, // ensure password is saved and hashed via pre-save hook
+            password, // will be hashed via pre-save hook
             fullName,
             profilePic: randomAvatar,
         });
-        try{
+
+        // Create user in Stream
+        try {
             await upsertStreamUser({
-            id:newUser._id.toString(),
-            name:newUser.fullName,
-            image:newUser.profilePic || "",
-        });
-        }catch(error){
-            console.log("error upserting user : ",error);
+                id: newUser._id.toString(),
+                name: newUser.fullName,
+                image: newUser.profilePic || "",
+            });
+        } catch (error) {
+            console.error("Error upserting stream user:", error);
+            // Optional: decide if you want to rollback newUser creation if stream fails
         }
+
         const token = generateToken(newUser._id);
         res.cookie("jwt", token, {
-            maxAge: 2 * 24 * 60 * 60 * 1000,
+            maxAge: 2 * 24 * 60 * 60 * 1000, // 2 days
             httpOnly: true,
             sameSite: "strict",
-            secure: process.env.NODE_ENV === 'production'
+            secure: process.env.NODE_ENV === 'production',
         });
 
         res.status(200).json({ success: true, user: newUser });
 
     } catch (error) {
-        console.error("Signup Error: ", error);
+        console.error("Signup Error:", error);
         res.status(500).json({ message: "Server error. Please try again later." });
     }
 };
 
-// Login Controller (empty for now)
-
+// Login Controller
 export const login = async (req, res) => {
     const { email, password } = req.body;
 
@@ -82,10 +84,10 @@ export const login = async (req, res) => {
 
         const token = generateToken(existingUser._id);
         res.cookie("jwt", token, {
-            maxAge: 2 * 24 * 60 * 60 * 1000, // 2 days
+            maxAge: 2 * 24 * 60 * 60 * 1000,
             httpOnly: true,
             sameSite: "strict",
-            secure: process.env.NODE_ENV === 'production'
+            secure: process.env.NODE_ENV === 'production',
         });
 
         return res.status(200).json({ success: true, user: existingUser });
@@ -96,9 +98,8 @@ export const login = async (req, res) => {
     }
 };
 
-
 // Logout Controller
 export const logout = (req, res) => {
     res.clearCookie("jwt");
-    res.status(200).json({success:true,message:"logout successfully"});
+    res.status(200).json({ success: true, message: "Logout successful" });
 };

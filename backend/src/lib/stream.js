@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const API_KEY = process.env.STREAM_API_KEY;
-const SECRET_KEY = process.env.STREAM_SECRET_KEY;
+const SECRET_KEY = process.env.STREAM_API_SECRET;
 
 if (!API_KEY || !SECRET_KEY) {
     console.log("Stream API key or secret is missing");
