@@ -2,19 +2,21 @@ import {isValidToken} from '../utility/jwtToken.js';
 import User from '../models/User.js';
 
 const authenticate = async (req, res, next) => {
-    const token = req.cookies.jwt;
+    const token = req.cookies?.jwt;
 
     if (!token) {
+        console.log('no token');
         return res.status(401).json({ message: "Unauthorized - No token provided, login again" });
     }
 
     const decoded = isValidToken(token);
     if (!decoded) {
+        console.log('token expired')
         return res.status(401).json({ message: "Session expired, login/signup again" });
     }
 
     try {
-        const user = await User.findById(decoded.userId);
+        const user = await User.findById(decoded.userId).select("-password");
         if (!user) {
             return res.status(401).json({ message: "User no longer exists" });
         }

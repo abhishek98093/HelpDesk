@@ -8,5 +8,8 @@ router.post('/login',login);
 router.post('/logout',logout);
 router.post('/signup', signup);
 router.post('/onboarding',authenticate,onboard);
+router.get('/me',authenticate,(req,res)=>{
+    res.status(200).json({success:true,user:req.user});
+})
 
 export default router;

@@ -5,8 +5,10 @@ const app=express();
 dotenv.config();
 const PORT=process.env.PORT;
 import authRoutes from './routes/authRoutes.js';
+import userRoutes from './routes/userRoutes.js'
 import { connectDB } from './lib/db.js';
 app.use(express.json());
+app.use(cookieParser());
 app.use('/api/auth',authRoutes);
 
 

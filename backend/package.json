@@ -18,6 +18,8 @@
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.16.1",
-    "stream-chat": "^9.10.0"
+    "stream-chat": "^9.10.0",
+    "validator": "^13.15.15",
+    "xss": "^1.0.15"
   }
 }
