@@ -4,6 +4,7 @@ import {ExclamationMark, AddUser, Person, Document, Chat, Microphone, Group, Suc
 import useNotify from "../../hooks/useNotify";
 import Button from "../ui/Button";
 import FloatingChatButton from "../FloatingChatButton";
+import apiClient from "../../utils/apiClient";
 
 const AdminDashboard = () => {
   const [complaints, setComplaints] = useState([]);
@@ -19,124 +20,114 @@ const AdminDashboard = () => {
 
   const [filterStatus, setFilterStatus] = useState("Active");
   const { notify } = useNotify();
+const resolve = async (id) => {
+  try {
+    // Use the apiClient instance. It automatically adds the base URL and auth token.
+    const { data } = await apiClient.patch(`/api/complaints/${id}`);
 
-  const resolve = async (id) => {
-    try {
-      
-      const res = await fetch(`${apiUrl}/api/complaints/${id}`, {
-        method: "PATCH",
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        notify(data.message || "Complaint resolved and email sent to user");
-        setComplaints(prev => prev.filter(c => c.id !== id));
-      } else {
-        notify(data.message || "Failed to resolve", "error");
-      }
-    } catch (error) {
-      console.error("Error resolving complaint:", error);
-      notify("Error resolving complaint", "error");
+    if (data.success) {
+      notify(data.message || "Complaint resolved and email sent to user");
+      // Update state by removing the resolved complaint.
+      setComplaints((prev) => prev.filter((c) => c.id !== id));
+    } else {
+      // This else block might not be needed if the server always sends error statuses for failures.
+      notify(data.message || "Failed to resolve", "error");
     }
-  };
-  
-  useEffect(() => {
-    fetchComplaints();
-  }, []);
-  
-  const fetchComplaints = async () => {
-    try {
-      const res = await fetch(`${apiUrl}/api/complaints`);
-      const data = await res.json();
-      if (data.success) {
-        setComplaints(data.data);
-      } else {
-        notify("Failed to fetch complaints", "error");
-      }
-    } catch (error) {
-      console.error("Error fetching complaints", error);
+  } catch (error) {
+    console.error("Error resolving complaint:", error);
+    // Axios provides detailed server error messages in `error.response.data.message`.
+    notify(error.response?.data?.message || "An error occurred while resolving the complaint.", "error");
+  }
+};
+
+const fetchComplaints = async () => {
+  try {
+    const { data } = await apiClient.get("/api/complaints");
+    if (data.success) {
+      setComplaints(data.data);
+    } else {
       notify("Failed to fetch complaints", "error");
     }
-  };
+  } catch (error) {
+    console.error("Error fetching complaints:", error);
+    notify(error.response?.data?.message || "Could not fetch complaints.", "error");
+  }
+};
 
-  const openAssignModal = async (id, complaintType) => {
-    setSelectedComplaintId(id);
-    setAssignedName("");
-    setAssignedContact("");
-    setModalOpen(true);
+const openAssignModal = async (id, complaintType) => {
+  setSelectedComplaintId(id);
+  setAssignedName("");
+  setAssignedContact("");
+  setModalOpen(true);
 
-    try {
-      const res = await fetch(`${apiUrl}/api/personnel`);
-      const data = await res.json();
-      if (data.success) {
-        const filtered = data.data.filter(
-          (p) => p.available && p.role.toLowerCase() === complaintType.toLowerCase()
-        );
-        setAvailablePersonnel(filtered);
-      } else {
-        notify("Failed to fetch personnel", "error");
-      }
-    } catch (error) {
-      console.error("Error fetching personnel", error);
-      notify("Error fetching personnel", "error");
-    }
-  };
-
-  const handleAssign = async () => {
-    if (!assignedName || !assignedContact) {
-      notify("Please fill in all fields", "error");
-      return;
-    }
-    try {
-      const res = await fetch(
-        `${apiUrl}/api/complaints/${selectedComplaintId}/assign`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ assignedName, assignedContact }),
-        }
+  try {
+    const { data } = await apiClient.get("/api/personnel");
+    if (data.success) {
+      const filtered = data.data.filter(
+        (p) => p.available && p.role.toLowerCase() === complaintType.toLowerCase()
       );
+      setAvailablePersonnel(filtered);
+    } else {
+      notify("Failed to fetch personnel", "error");
+    }
+  } catch (error) {
+    console.error("Error fetching personnel:", error);
+    notify(error.response?.data?.message || "Could not fetch personnel.", "error");
+  }
+};
 
-      const data = await res.json();
-      if (data.success) {
-        notify("Personnel assigned!");
-        fetchComplaints();
-        setModalOpen(false);
-      } else {
-        notify("Failed to assign", "error");
-      }
-    } catch (error) {
-      console.error("Error assigning personnel", error);
-      notify("Error assigning personnel", "error");
-    }
-  };
+const handleAssign = async () => {
+  if (!assignedName || !assignedContact) {
+    notify("Please select a person to assign", "error");
+    return;
+  }
+  try {
+    // With Axios, you pass the body object directly. It handles the JSON conversion.
+    const { data } = await apiClient.put(
+      `/api/complaints/${selectedComplaintId}/assign`,
+      { assignedName, assignedContact }
+    );
 
-  const handleAddPersonnel = async () => {
-    const { name, contact, role } = newPersonnel;
-    if (!name || !contact || !role) {
-      notify("All fields are required", "error");
-      return;
+    if (data.success) {
+      notify("Personnel assigned successfully!");
+      fetchComplaints(); // Refetch to update the list.
+      setModalOpen(false);
+    } else {
+      notify(data.message || "Failed to assign", "error");
     }
-  
-    try {
-      const res = await fetch(`${apiUrl}/api/personnel`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, contact, role }),
-      });
-  
-      const data = await res.json();
-      if (data.success) {
-        notify("Personnel added successfully");
-        setAddPersonnelModal(false);
-        setNewPersonnel({ name: "", contact: "", role: "" });
-      } else {
-        notify(data.message || "Failed to add personnel", "error");
-      }
-    } catch (error) {
-      console.error("Error adding personnel", error);
-      notify("Something went wrong while adding personnel", "error");
+  } catch (error) {
+    console.error("Error assigning personnel:", error);
+    notify(error.response?.data?.message || "An error occurred during assignment.", "error");
+  }
+};
+
+const handleAddPersonnel = async () => {
+  const { name, contact, role } = newPersonnel;
+  if (!name || !contact || !role) {
+    notify("All fields are required", "error");
+    return;
+  }
+
+  try {
+    const { data } = await apiClient.post("/api/personnel", { name, contact, role });
+
+    if (data.success) {
+      notify("Personnel added successfully");
+      setAddPersonnelModal(false);
+      setNewPersonnel({ name: "", contact: "", role: "" });
+    } else {
+      notify(data.message || "Failed to add personnel", "error");
     }
-  };
+  } catch (error) {
+    console.error("Error adding personnel:", error);
+    notify(error.response?.data?.message || "An error occurred while adding personnel.", "error");
+  }
+};
+
+// This useEffect hook correctly calls fetchComplaints on component mount.
+useEffect(() => {
+  fetchComplaints();
+}, []);
 
   // Filter complaints based on status filter
   const filteredComplaints = complaints.filter(c => 
