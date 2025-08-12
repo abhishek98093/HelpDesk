@@ -1,10 +1,11 @@
-const apiUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+
+import { jwtDecode } from "jwt-decode"; // Assuming you still need this for the email
 import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { jwtDecode } from "jwt-decode"; 
 import {QuestionMark, Tag, AdjustmentVertical, ChevronDown, Location, Message, 
         Support, Upload, Close, Tick, Spinner, Minus} from "../../assets/Icons";
 import useNotify from "../../hooks/useNotify";
+import apiClient from "../../utils/apiClient";
 
 const TicketForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,90 +41,87 @@ const TicketForm = () => {
     setFileName("");
   };
   
-  useEffect(() => {
-    const fetchUserDetails = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
 
-      try {
-        const decoded = jwtDecode(token);
-        const email = decoded.email;
-
-        const res = await fetch(`${apiUrl}/api/users/${email}`,{
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-        });
-        const data = await res.json();
-
-        if (data.success && data.user) {
-          setFormData(prev => ({
-            ...prev,
-            name: data.user.name,
-            email: data.user.email,
-            type: categoryFromState || "",
-          }));
-        }
-      } catch (err) {
-        console.error("Error fetching user info", err);
-      }
-    };
-
-    fetchUserDetails();
-  }, [categoryFromState]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    
-    const { name, email, priority, location, type, message } = formData;
-    if (!name || !email || !priority || !location || !type || !message) {
-      notifyError("Please fill all required fields");
-      setIsSubmitting(false);
-      return;
-    }
-    
+useEffect(() => {
+  const fetchUserDetails = async () => {
     const token = localStorage.getItem("token");
-    const form = new FormData();
-    Object.entries(formData).forEach(([key, val]) => form.append(key, val));
-    if (files.length > 0) {
-      files.forEach(file => form.append("attachments", file));
-    }
-  
+    if (!token) return;
+
     try {
-      const res = await fetch(`${apiUrl}/api/complaints`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-        },
-        body: form,
-      });
-  
-      const data = await res.json();
-      if (data.success) {
-        notifySuccess("Ticket submitted! Check your email for your 4-digit code.");
-        setFormData({
-          name: "",
-          email: "",
-          type: "",
-          priority: "Low",
-          location: "",
-          message: "",
-        });
-        setFiles([]);
-        setFileName("");
-      } else {
-        notifyError("Failed to submit ticket");
-      }      
+      const decoded = jwtDecode(token);
+      const email = decoded.email;
+
+      // Use the apiClient. The auth token is added automatically by the interceptor.
+      const { data } = await apiClient.get(`/api/users/${email}`);
+
+      if (data.success && data.user) {
+        setFormData(prev => ({
+          ...prev,
+          name: data.user.name,
+          email: data.user.email,
+          type: categoryFromState || "",
+        }));
+      }
     } catch (err) {
-      console.error(err);
-      notifyError("Error submitting ticket");
-    } finally {
-      setIsSubmitting(false);
+      console.error("Error fetching user info", err);
+      // Use the detailed error message from Axios if available
+      notifyError(err.response?.data?.message || "Could not fetch user details.");
     }
   };
+
+  fetchUserDetails();
+}, [categoryFromState]); // Dependency array is correct
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setIsSubmitting(true);
+
+  const { name, email, priority, location, type, message } = formData;
+  if (!name || !email || !priority || !location || !type || !message) {
+    notifyError("Please fill all required fields");
+    setIsSubmitting(false);
+    return;
+  }
+
+  // Create a FormData object to handle file uploads
+  const form = new FormData();
+  // Append all form fields to the FormData object
+  Object.entries(formData).forEach(([key, val]) => form.append(key, val));
+  if (files.length > 0) {
+    files.forEach(file => form.append("attachments", file));
+  }
+
+  try {
+    // Use apiClient.post. Axios correctly handles sending FormData.
+    // The interceptor will add the Authorization header.
+    const { data } = await apiClient.post("/api/complaints", form);
+
+    if (data.success) {
+      notifySuccess("Ticket submitted! Check your email for your 4-digit code.");
+      // Reset the form state after successful submission
+      setFormData({
+        name: "",
+        email: "",
+        type: "",
+        priority: "Low",
+        location: "",
+        message: "",
+      });
+      setFiles([]);
+      setFileName("");
+    } else {
+      // This part might not be reached if the server sends a non-2xx status,
+      // as Axios would throw an error, which is caught below.
+      notifyError(data.message || "Failed to submit ticket");
+    }
+  } catch (err) {
+    console.error("Error submitting ticket:", err);
+    notifyError(err.response?.data?.message || "An error occurred while submitting the ticket.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   const priorityIcons = {
     Low: (
