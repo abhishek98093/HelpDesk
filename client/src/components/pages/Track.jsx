@@ -1,5 +1,6 @@
 const apiUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 import React, { useState } from "react";
+import apiClient from "../../utils/apiClient";
 
 function Track() {
   const [email, setEmail] = useState("");
@@ -9,38 +10,41 @@ function Track() {
   const [personnel, setPersonnel] = useState(null);
 
   const handleTrack = async () => {
-    setError("");
-    setStatus(null);
+  setError("");
+  setStatus(null);
+ 
 
-    if (!email || !code) {
-      setError("Please enter both email and ticket ID.");
-      return;
-    }
+  if (!email || !code) {
+    setError("Please enter both email and ticket code.");
+    return;
+  }
 
-    try {
-      const res = await fetch(`${apiUrl}/api/complaints/track`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, code }),
-      });
+  try {
+    const { data } = await apiClient.post("/api/complaints/track", { email, code });
 
-      const data = await res.json();
-      if (data.success) {
-        setStatus(data.status);
-        if (data.personnel) {
-          setPersonnel(data.personnel);
-        } else {
-          setPersonnel(null);
-        }
+    if (data.success) {
+      setStatus(data.status);
+      // Conditionally set personnel info if it exists in the response.
+      if (data.personnel) {
+        setPersonnel(data.personnel);
+      } else {
+        setPersonnel(null);
       }
-      
-    } catch (err) {
-      console.error(err);
-      setError("An error occurred while fetching status.");
+    } else {
+      // This case handles scenarios where the server responds with 200 OK
+      // but indicates failure in the body.
+      setError(data.message || "Ticket not found.");
     }
-  };
+  } catch (err) {
+    // This block catches network errors and non-2xx server responses (like 404, 500).
+    console.error("Error tracking ticket:", err);
+    // Use the specific error message from the server if available.
+    setError(err.response?.data?.message || "An error occurred while fetching status.");
+  } finally {
+    
+  }
+};
+
 
   return (
     <main className="flex-grow mx-auto px-4 sm:px-6 lg:px-8 py-24"> 

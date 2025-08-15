@@ -6,6 +6,7 @@ import useNotify from "../../hooks/useNotify";
 import { Check, Star, Loader2, AlertCircle, File, MapPin, Clock, User, Calendar, ExternalLink } from "lucide-react";
 import {Close, Search} from "../../assets/Icons";
 import ChatUser from "../ChatUser";
+import apiClient from "../../utils/apiClient";
 
 const UserDashboard = () => {
   const [complaints, setComplaints] = useState([]);
@@ -17,77 +18,69 @@ const UserDashboard = () => {
   const { notifySuccess, notifyError } = useNotify();
   
 
-  const handleFeedbackSubmit = async (complaint) => {
-    if (!feedback[complaint.id]?.rating) {
-      notifyError("Please select a rating before submitting");
+ const handleFeedbackSubmit = async (complaint) => {
+  if (!feedback[complaint.id]?.rating) {
+    notifyError("Please select a rating before submitting");
+    return;
+  }
+
+  const body = {
+    complaint_id: complaint.id,
+    user_id: complaint.user_id,
+    assigned_personnel_id: complaint.assigned_personnel_id,
+    rating: feedback[complaint.id]?.rating,
+    comment: feedback[complaint.id]?.comment || "",
+  };
+
+  try {
+    const { data } = await apiClient.post("/api/users/feedback", body);
+
+    if (data.success) {
+      notifySuccess("Feedback submitted successfully!");
+
+      setComplaints((prevComplaints) =>
+        prevComplaints.map((c) =>
+          c.id === complaint.id ? { ...c, feedback_given: true } : c
+        )
+      );
+
+      setFeedback((prev) => ({ ...prev, [complaint.id]: {} }));
+      setActiveFeedbackForm(null);
+    } else {
+      notifyError(data.message || "Failed to submit feedback.");
+    }
+  } catch (error) {
+    console.error("Feedback error:", error);
+    notifyError(error.response?.data?.message || "Error submitting feedback.");
+  }
+};
+
+useEffect(() => {
+  const fetchComplaints = async () => {
+    setLoading(true);
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setLoading(false);
       return;
     }
 
-    const token = localStorage.getItem("token");
-
-    const body = {
-      complaint_id: complaint.id,
-      user_id: complaint.user_id,
-      assigned_personnel_id: complaint.assigned_personnel_id,
-      rating: feedback[complaint.id]?.rating,
-      comment: feedback[complaint.id]?.comment || "",
-    };
-
     try {
-      const res = await fetch(`${apiUrl}/api/feedback`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        notifySuccess("Feedback submitted successfully!");
-
-        setComplaints((prevComplaints) =>
-          prevComplaints.map((c) =>
-            c.id === complaint.id ? { ...c, feedback_given: true } : c
-          )
-        );
-
-        setFeedback((prev) => ({ ...prev, [complaint.id]: {} }));
-        setActiveFeedbackForm(null);
-      } else {
-        notifyError("Failed to submit feedback.");
+      const decoded = jwtDecode(token);
+      const { data } = await apiClient.get(`/api/complaints/user/${decoded.email}`);
+      
+      if (data.success && Array.isArray(data.complaints)) {
+        setComplaints(data.complaints);
       }
     } catch (error) {
-      console.error("Feedback error:", error);
-      notifyError("Error submitting feedback.");
+      console.error("Failed to fetch complaints", error);
+      notifyError(error.response?.data?.message || "Could not fetch your complaints.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    const fetchComplaints = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-
-      try {
-        const decoded = jwtDecode(token);
-        const res = await fetch(
-          `${apiUrl}/api/complaints/user/${decoded.email}`
-        );
-        const data = await res.json();
-        
-        if (data.success && Array.isArray(data.complaints)) {
-          setComplaints(data.complaints);
-        }
-      } catch (error) {
-        console.error("Failed to fetch complaints", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchComplaints();
-  }, []);
+  fetchComplaints();
+}, []);
 
   // Filter complaints based on status and search term
   const filteredComplaints = complaints.filter(complaint => {
