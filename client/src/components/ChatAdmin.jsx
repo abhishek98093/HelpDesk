@@ -1,6 +1,7 @@
 const apiUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {jwtDecode} from "jwt-decode";
+import apiClient from "../utils/apiClient";
 
 const ChatAdmin = () => {
   const token = localStorage.getItem("token");
@@ -36,14 +37,11 @@ const ChatAdmin = () => {
     return displayName.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  // Fetch all users who have chatted before
-  const fetchUsers = useCallback(async () => {
+ const fetchUsers = useCallback(async () => {
     try {
       setUsersLoading(true);
       setError(null);
-      const res = await fetch(`${apiUrl}/api/chat/users`);
-      if (!res.ok) throw new Error('Failed to fetch users');
-      const data = await res.json();
+      const { data } = await apiClient.get('/api/chat/users');
       setUsers(data);
     } catch (err) {
       setError('Failed to load users');
@@ -57,14 +55,13 @@ const ChatAdmin = () => {
     fetchUsers();
   }, [fetchUsers]);
 
-  // Fetch messages for selected user
   const fetchMessages = useCallback(async (userId) => {
     try {
       setMessagesLoading(true);
       setError(null);
-      const res = await fetch(`${apiUrl}/api/chat?user_id=${userId}&limit=50`);
-      if (!res.ok) throw new Error('Failed to fetch messages');
-      const data = await res.json();
+      const { data } = await apiClient.get('/api/chat', {
+        params: { user_id: userId, limit: 50 }
+      });
       setMessages(data);
     } catch (err) {
       setError('Failed to load messages');
@@ -82,7 +79,6 @@ const ChatAdmin = () => {
     fetchMessages(selectedUser.id);
   }, [selectedUser, fetchMessages]);
 
-  // Poll for new messages every 3 seconds when a user is selected
   useEffect(() => {
     if (!selectedUser) return;
 
@@ -107,33 +103,27 @@ const ChatAdmin = () => {
     setSendingMessage(true);
 
     try {
-      const res = await fetch(`${apiUrl}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: selectedUser.id,
-          message: messageToSend,
-          from_role: "admin"
-        })
-      });
+      const messagePayload = {
+        userId: selectedUser.id,
+        message: messageToSend,
+        fromRole: "admin"
+      };
+      
+      await apiClient.post('/api/chat', messagePayload);
 
-      if (!res.ok) throw new Error('Failed to send message');
-
-      // Optimistically add the message
       const newMessage = {
         user_id: selectedUser.id,
         message: messageToSend,
-        from_role: "admin",
-        created_at: new Date().toISOString()
+        fromRole: "admin",
+        createdAt: new Date().toISOString()
       };
       
       setMessages(prev => [...prev, newMessage]);
       
-      // Focus back to input
       chatInputRef.current?.focus();
     } catch (err) {
       setError('Failed to send message');
-      setChatInput(messageToSend); // Restore the message
+      setChatInput(messageToSend);
       console.error('Error sending message:', err);
     } finally {
       setSendingMessage(false);
