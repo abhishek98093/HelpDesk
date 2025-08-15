@@ -1,10 +1,11 @@
-const apiUrl = "http://localhost:5000";//import.meta.env.VITE_BACKEND_URL || 
+const apiUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useNotify from "../../hooks/useNotify";
 import FloatingIcons from "../ui/FloatingIcons";
-import Particles from "../ui/Particles";
-  
+import apiClient from "../../utils/apiClient";
+
+
 const SignupForm = () => {
   const [name, setName] = useState(""); 
   const [email, setEmail] = useState("");
@@ -13,32 +14,40 @@ const SignupForm = () => {
   const { notifySuccess, notifyError } = useNotify();
 
   const handleSignup = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
+  // Optional: Add a loading state to disable the button during submission
+  // setLoading(true);
 
-    try {
-      const res = await fetch(`${apiUrl}/api/signup`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name, email, password }),
-      });
+  try {
+    // Use the apiClient to make the POST request.
+    // It automatically handles the base URL, headers, and JSON conversion.
+    const { data } = await apiClient.post("/api/users/signup", { name, email, password });
 
-      const data = await res.json();
-
-      if (data.success) {
-        localStorage.setItem("token", data.token);
-        notifySuccess("Signup successful! You can now log in.");
-        // onSignupSuccess();
+    if (data.success) {
+      // On successful signup, store the token and navigate the user.
+      localStorage.setItem("token", data.token);
+      notifySuccess("Signup successful! Redirecting to login...");
+      
+      // Navigate to the login page after a short delay to allow the user to see the success message.
+      setTimeout(() => {
         navigate("/login");
-      } else {
-        notifyError("Signup failed: " + data.message);
-      }
-    } catch (err) {
-      console.error("Signup error:", err);
-      notifyError("Server error. Try again later.");
+      }, 1500);
+
+    } else {
+      // This case handles scenarios where the server responds with 200 OK but indicates failure in the body.
+      // This might not be reached if the server always sends error statuses for failures.
+      notifyError(data.message || "Signup failed. Please try again.");
     }
-  };
+  } catch (err) {
+    // This block catches network errors and non-2xx server responses (like 400, 500).
+    console.error("Signup error:", err);
+    // Use the specific error message from the server if available.
+    notifyError(err.response?.data?.message || "Server error. Please try again later.");
+  } finally {
+    // Optional: Stop the loading state
+    // setLoading(false);
+  }
+};
 
   return (
     <main className="flex-grow mx-auto px-4 sm:px-6 lg:px-8 py-8"> 
