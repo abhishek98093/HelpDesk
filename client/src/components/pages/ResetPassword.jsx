@@ -1,6 +1,7 @@
 const apiUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import apiClient from "../../utils/apiClient";
 
 const ResetPassword = () => {
   const { token } = useParams();
@@ -12,35 +13,36 @@ const ResetPassword = () => {
   const [success, setSuccess] = useState("");
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-    console.log(password);
-    try {
-      const response = await fetch(`${apiUrl}/api/reset-password/${token}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ password }),
-      });
+  if (password !== confirmPassword) {
+    setError("Passwords do not match.");
+    return;
+  }
+  // Optional: Add a loading state here if desired
+  // setLoading(true);
 
-      if (response.ok) {
-        setSuccess("Password reset successful! Redirecting to login...");
-        setTimeout(() => {
-          navigate("/login");
-        }, 2000);
-      } else {
-        const data = await response.json();
-        setError(data.message || "Error resetting password.");
-      }
-    } catch (err) {
-      setError("Something went wrong. Please try again later.");
-    }
-  };
+  try {
+    // Use the apiClient to make the POST request.
+    // It automatically handles the base URL and JSON conversion.
+    await apiClient.post(`/api/users/reset-password/${token}`, { password });
+
+    // If the request is successful (i.e., doesn't throw an error), we can proceed.
+    setSuccess("Password reset successful! Redirecting to login...");
+    setTimeout(() => {
+      navigate("/login");
+    }, 2000);
+
+  } catch (err) {
+    // This block catches network errors and non-2xx server responses (like 400, 500).
+    console.error("Error resetting password:", err);
+    // Use the specific error message from the server if available.
+    setError(err.response?.data?.message || "Something went wrong. Please try again later.");
+  } finally {
+    // Optional: Stop the loading state
+    // setLoading(false);
+  }
+};
 
   return (
     <main className="flex-grow mx-auto px-4 sm:px-6 lg:px-8 py-8"> 
