@@ -30,18 +30,12 @@ Students often face issues on campus but don’t have a clear channel to report 
 - Real-time chat with students for updates or clarifications  
 - Track **ticket resolution progress**  
 
----
-
-### 🛠️ For Professionals
-- Receive assigned tickets  
-- Update ticket status as work progresses  
-- Communicate directly with students or admin  
 
 ---
 
 ## 🔐 Authentication & Security
 - ✅ **JWT-based authentication**  
-- 🎫 Role-based access control for **students, admin, and professionals**  
+- 🎫 Role-based access control for **students, admin**  
 - 🗄️ Secure handling of ticket data and chat messages  
 
 ---
@@ -72,8 +66,6 @@ DB_STRING=postgres://username:password@host:port/database
 
 
 ### 📄 client/.env.example
-
-```
 VITE_BACKEND_URL=http://localhost:...
 
 ```
