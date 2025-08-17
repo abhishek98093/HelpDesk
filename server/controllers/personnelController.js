@@ -1,53 +1,64 @@
-const pool = require('../config/db'); // PostgreSQL pool
+const {
+  getAll,
+  getAvailableByRole,
+  addPersonnel,
+} = require("../models/PersonnelModel");
 
-// Get all personnels
+/**
+ * Controller to fetch all personnel records.
+ * @param {object} req - The Express request object.
+ * @param {object} res - The Express response object.
+ */
 const getPersonnels = async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM personnel");
-    res.json({ success: true, data: result.rows });
-  } catch (err) {
-    console.error("Error fetching personnel:", err);
+    const result = await getAll();
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    console.error("Error fetching personnel:", error);
     res.status(500).json({ success: false, message: "Error fetching personnel" });
   }
 };
 
-// Get available personnels by role
+/**
+ * Controller to fetch all available personnel filtered by a specific role.
+ * @param {object} req - The Express request object.
+ * @param {object} res - The Express response object.
+ */
 const getAvailablePersonnels = async (req, res) => {
-  const { role } = req.params;
   try {
-    const result = await pool.query(
-      "SELECT * FROM personnel WHERE role = $1 AND is_available = TRUE",
-      [role]
-    );
-    res.json({ success: true, data: result.rows });
-  } catch (err) {
-    console.error("Error fetching available personnel:", err);
+    const { role } = req.params;
+    const result = await getAvailableByRole(role);
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    console.error("Error fetching available personnel:", error);
     res.status(500).json({ success: false, message: "Error fetching available personnel" });
   }
 };
 
-// Add new personnel
+/**
+ * Controller to add a new personnel record.
+ * @param {object} req - The Express request object.
+ * @param {object} res - The Express response object.
+ */
 const addPersonnels = async (req, res) => {
-  const { name, contact, role } = req.body;
-
-  if (!name || !contact || !role) {
-    return res.status(400).json({ success: false, message: "All fields are required" });
-  }
-
   try {
-    await pool.query(
-      "INSERT INTO personnel (name, contact, role) VALUES ($1, $2, $3)",
-      [name, contact, role]
-    );
-    res.json({ success: true, message: "Personnel added successfully" });
-  } catch (err) {
-    console.error("Error adding personnel:", err);
+    const { name, contact, role } = req.body;
+
+    if (!name || !contact || !role) {
+      return res.status(400).json({ success: false, message: "All fields are required" });
+    }
+
+    await addPersonnel({ name, contact, role });
+
+    res.status(201).json({ success: true, message: "Personnel added successfully" });
+  } catch (error) {
+    console.error("Error adding personnel:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-module.exports = { 
-  getPersonnels, 
-  getAvailablePersonnels, 
-  addPersonnels 
+module.exports = {
+  getPersonnels,
+  getAvailablePersonnels,
+  addPersonnels
 };
