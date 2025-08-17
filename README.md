@@ -9,7 +9,7 @@
 Students often face issues on campus but don’t have a clear channel to report them. **IIITA Help Desk** bridges this gap by:  
 - Allowing students to submit tickets easily  
 - Letting admins prioritize and assign tickets efficiently  
-- Providing **real-time communication** between students, admin, and professionals  
+- Providing **real-time communication** between students, admin
 - Tracking the status of tickets for accountability and transparency  
 
 ---
