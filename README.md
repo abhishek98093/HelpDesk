@@ -46,7 +46,7 @@ Students often face issues on campus but don’t have a clear channel to report 
 |--------------|--------------------------------------|
 | Frontend     | React + Vite + Tailwind CSS           |
 | Backend      | Node.js + Express                     |
-| Database     | PostgreSQL / MySQL                    |
+| Database     | PostgreSQL                            |
 | Realtime     | Socket.IO                             |
 | Auth         | JWT, Role-based Middleware            |
 | State/Data   | Axios + React Query                    |
