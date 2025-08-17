@@ -1,71 +1,86 @@
 import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
-// For admin: userId is the selected user to chat with
+const VITE_BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+
 export const useChat = ({ userId, isAdmin }) => {
-  const [userMessages, setuserMessages] = useState([]);
-  const [userList, setUserList] = useState([]); // List of users who have chatted
-  const socketRef = useRef();
+  const [messages, setMessages] = useState([]);
+  const [userList, setUserList] = useState([]);
+  const socketRef = useRef(null);
 
   useEffect(() => {
-    socketRef.current = io(import.meta.env.VITE_BACKEND_URL || "http://localhost:5000");
-    socketRef.current.emit("join", { userId, isAdmin });
-
-    // For admin: receive all user messages
-    socketRef.current.on("receiveMessage", (msg) => {
-      if (isAdmin) {
-        // msg: { userId, message, from }
-        setuserMessages((prev) => {
-          // Only show messages for the selected user
-          if (msg.userId === userId) {
-            return [...prev, msg];
-          }
-          return prev;
-        });
-        setUserList((prev) => {
-          if (msg.userId && !prev.includes(msg.userId)) {
-            return [...prev, msg.userId];
-          }
-          return prev;
-        });
-      } else {
-        // For user: just append messages
-        setuserMessages((prev) => [...prev, msg]);
-      }
-    });
-
-    // Optionally, receive a list of active users from the server
-    socketRef.current.on("userList", (users) => {
-      setUserList(users);
-    });
-
-    return () => {
-      socketRef.current.disconnect();
-    };
-  }, [userId, isAdmin]);
-
-  // When admin switches user, clear messages and request chat history
-  useEffect(() => {
-    if (isAdmin && userId) {
-      setuserMessages([]); // Clear messages when switching user
-      socketRef.current.emit("getChatHistory", { userId });
-      socketRef.current.on("chatHistory", (history) => {
-        setuserMessages(history || []);
-      });
+    // Connect only if there's a user context (either a user is logged in, or an admin has selected a user)
+    if (!userId) {
+      return;
     }
-    // eslint-disable-next-line
-  }, [userId, isAdmin]);
+
+    // Establish socket connection
+    socketRef.current = io(VITE_BACKEND_URL);
+    const socket = socketRef.current;
+
+    // Join the appropriate room on the server
+    socket.emit("join", { userId, isAdmin });
+
+    // --- Event Listeners ---
+
+    // Handles receiving a new message in real-time
+    const handleReceiveMessage = (msg) => {
+      // For admin, only add the message if it's for the currently selected user
+      if (isAdmin && msg.userId !== userId) {
+        return;
+      }
+      setMessages((prev) => [...prev, msg]);
+    };
+
+    // Handles receiving the initial chat history
+    const handleChatHistory = (history) => {
+      setMessages(history || []);
+    };
+
+    // Handles updates to the list of users who have chatted
+    const handleUserList = (users) => {
+      setUserList(users);
+    };
+
+    socket.on("receiveMessage", handleReceiveMessage);
+    socket.on("chatHistory", handleChatHistory);
+    socket.on("userList", handleUserList);
+
+    // If an admin selects a user, clear old messages and request new history
+    if (isAdmin) {
+      setMessages([]);
+      socket.emit("getChatHistory", { userId });
+    }
+
+    // --- Cleanup Function ---
+    // This is crucial to prevent memory leaks and duplicate event listeners.
+    return () => {
+      socket.off("receiveMessage", handleReceiveMessage);
+      socket.off("chatHistory", handleChatHistory);
+      socket.off("userList", handleUserList);
+      socket.disconnect();
+    };
+  }, [userId, isAdmin]); // This effect re-runs when the admin selects a different user
 
   const sendMessage = (msg) => {
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    // Optimistically update the UI with the new message
+    const messagePayload = {
+      ...msg,
+      userId: userId,
+      fromRole: isAdmin ? "admin" : "user",
+    };
+    setMessages((prev) => [...prev, messagePayload]);
+
+    // Emit the message to the server
     if (isAdmin) {
-      // Admin sends to a specific user
-      socketRef.current.emit("adminReply", { userId, message: msg.message });
-      setuserMessages((prev) => [...prev, { ...msg, from: "admin" }]);
+      socket.emit("adminReply", { userId, message: msg.message });
     } else {
-      socketRef.current.emit("userMessage", { userId, message: msg.message });
-      setuserMessages((prev) => [...prev, { ...msg, from: "user" }]);
+      socket.emit("userMessage", { userId, message: msg.message });
     }
   };
 
-  return { userMessages, sendMessage, setuserMessages, userList };
+  return { messages, sendMessage, setMessages, userList };
 };
