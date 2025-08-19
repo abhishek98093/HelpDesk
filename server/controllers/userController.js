@@ -1,197 +1,11 @@
-// const pool = require('../config/db'); // PostgreSQL pool
-// const crypto = require("crypto");
-// const { sendForgotPasswordMail } = require("../utils/mailer");
-// const jwt = require('jsonwebtoken');
-// require("dotenv").config();
-// const bcrypt = require('bcrypt');
-// const { userSchema } = require('../schemas/userSchema');
-// const { feedbackSchema } = require('../schemas/feedbackSchema');
-// const SECRET_KEY = process.env.SECRET_KEY;
+const {
+  createUser,
+  findUserByEmail,
+  getUserDetailsByEmail,
+  addFeedback // Using the combined feedback function from the model
+} = require('../models/userModel');
 
-// const resetTokens = {}; // In-memory store for reset tokens
-
-// // LOGIN
-// const login = async (req, res) => {
-//   const { email, password } = req.body;
-//   try {
-//     const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-//     if (result.rows.length === 0) {
-//       return res.status(401).json({ success: false, message: "Invalid credentials" });
-//     }
-    
-//     const user = result.rows[0];
-//     const isMatch = await bcrypt.compare(password, user.password);
-//     if (!isMatch) {
-//       return res.status(401).json({ success: false, message: "Invalid credentials" });
-//     }
-
-
-
-//     const token = jwt.sign(
-//       { name: user.name, email: user.email, isAdmin: user.role === 'admin', id: user.id },
-//       SECRET_KEY,
-//       { expiresIn: '1h' }
-//     );
-
-//     res.json({ success: true, token });
-//   } catch (err) {
-//     console.error("Login error:", err);
-//     res.status(500).json({ success: false, error: "Server error" });
-//   }
-// };
-
-// // SIGNUP
-// const signup = async (req, res) => {
-//   console.log('api hit');
-//   const parseResult = userSchema.safeParse(req.body);
-//   if (!parseResult.success) {
-//     return res.status(400).json({
-//       success: false,
-//       message: "Validation error.",
-//       errors: parseResult.error.errors,
-//     });
-//   }
-
-//   const { name, email, password } = parseResult.data;
-//   try {
-//     const existingUser = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
-//     if (existingUser.rows.length > 0) {
-//       return res.status(400).json({ success: false, message: "User already exists" });
-//     }
-
-//     const hashedPassword = await bcrypt.hash(password, 10);
-//     await pool.query(
-//       "INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4)",
-//       [name, email, hashedPassword, 'user']
-//     );
-
-//     const token = jwt.sign({ name, email, isAdmin: false }, SECRET_KEY, { expiresIn: '1h' });
-//     res.status(201).json({
-//       success: true,
-//       message: "User registered successfully",
-//       token,
-//       user: { name, email, isAdmin: false },
-//     });
-//   } catch (err) {
-//     console.error("Signup error:", err);
-//     res.status(500).json({ success: false, error: "Something went wrong" });
-//   }
-// };
-
-// // GET USER DETAILS
-// const userDetails = async (req, res) => {
-//   const { email } = req.params;
-//   try {
-//     const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-//     if (result.rows.length === 0) {
-//       return res.status(404).json({ success: false, message: "User not found" });
-//     }
-//     res.json({ success: true, user: result.rows[0] });
-//   } catch (err) {
-//     console.error("Error fetching user:", err);
-//     res.status(500).json({ success: false, message: "Server error" });
-//   }
-// };
-
-// // SUBMIT FEEDBACK
-// const feedback = async (req, res) => {
-//   const parseResult = feedbackSchema.safeParse(req.body);
-//   if (!parseResult.success) {
-//     return res.status(400).json({
-//       success: false,
-//       message: "Validation error.",
-//       errors: parseResult.error.errors,
-//     });
-//   }
-
-//   const { complaint_id, user_id, assigned_personnel_id, rating, comment } = parseResult.data;
-
-//   try {
-//     const existing = await pool.query(
-//       "SELECT id FROM feedback WHERE complaint_id = $1",
-//       [complaint_id]
-//     );
-//     if (existing.rows.length > 0) {
-//       return res.status(400).json({ success: false, message: "Feedback already submitted." });
-//     }
-
-//     await pool.query(
-//       "INSERT INTO feedback (complaint_id, user_id, assigned_personnel_id, rating, comment) VALUES ($1, $2, $3, $4, $5)",
-//       [complaint_id, user_id, assigned_personnel_id, rating, comment]
-//     );
-
-//     await pool.query(
-//       "UPDATE complaints SET feedback_given = TRUE WHERE id = $1",
-//       [complaint_id]
-//     );
-
-//     res.status(200).json({ success: true, message: "Feedback submitted successfully." });
-//   } catch (err) {
-//     console.error("Feedback error:", err);
-//     res.status(500).json({ success: false, message: "Server error" });
-//   }
-// };
-
-// // FORGOT PASSWORD
-// const ForgotPassword = async (req, res) => {
-//   const { email } = req.body;
-//   try {
-//     const result = await pool.query("SELECT name FROM users WHERE email = $1", [email]);
-//     if (result.rows.length === 0) {
-//       return res.status(404).send("User not found");
-//     }
-
-//     const token = crypto.randomBytes(32).toString("hex");
-//     const expiresAt = Date.now() + 1000 * 60 * 60; // 1 hour
-//     resetTokens[token] = { email, expiresAt };
-
-//     const resetLink = `http://localhost:5173/reset-password/${token}`;
-//     console.log(resetLink);
-
-//     await sendForgotPasswordMail(email, result.rows[0].name, resetLink);
-//     res.json({ success: true });
-//   } catch (err) {
-//     console.error("ForgotPassword error:", err);
-//     res.status(500).send("Error sending reset email.");
-//   }
-// };
-
-// // RESET PASSWORD
-// const ResetPassword = async (req, res) => {
-//   const { token } = req.params;
-//   const { password } = req.body;
-//   const entry = resetTokens[token];
-
-//   if (!entry || entry.expiresAt < Date.now()) {
-//     return res.status(400).send("Invalid or expired token.");
-//   }
-
-//   try {
-//     const hashedPassword = await bcrypt.hash(password, 10);
-//     await pool.query("UPDATE users SET password = $1 WHERE email = $2", [
-//       hashedPassword,
-//       entry.email,
-//     ]);
-
-//     delete resetTokens[token];
-//     res.send("Password has been reset successfully. You can now log in.");
-//   } catch (err) {
-//     console.error("ResetPassword error:", err);
-//     res.status(500).json({ error: "Database error while resetting password." });
-//   }
-// };
-
-// module.exports = {
-//   login,
-//   signup,
-//   userDetails,
-//   feedback,
-//   ForgotPassword,
-//   ResetPassword,
-// };
-
-
-const pool = require('../config/db'); // PostgreSQL pool
+const pool = require('../config/db'); // Use pool for direct queries if needed
 const crypto = require("crypto");
 const { sendForgotPasswordMail } = require("../utils/mailer");
 const jwt = require('jsonwebtoken');
@@ -199,184 +13,226 @@ require("dotenv").config();
 const bcrypt = require('bcrypt');
 const { userSchema } = require('../schemas/userSchema');
 const { feedbackSchema } = require('../schemas/feedbackSchema');
+const { generateToken,verifyToken } = require('../utils/utility');
 const SECRET_KEY = process.env.SECRET_KEY;
 
-const resetTokens = {}; // In-memory store for reset tokens
+// In-memory store for password reset tokens. In a production environment,
+// this should be replaced with a more persistent store like Redis or a database table.
+const resetTokens = {};
 
-// LOGIN
 const login = async (req, res) => {
-  const { email, password } = req.body;
   try {
-    const result = await pool.query("SELECT * FROM users WHERE email = $1", [email.trim()]);
-    if (result.rows.length === 0) {
-      return res.status(401).json({ success: false, message: "Invalid credentials" });
+    const { email, password } = req.body;
+
+    const user = await findUserByEmail(email);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials"
+      });
     }
 
-    const user = result.rows[0];
-
-    // Make sure we have a hashed password in DB
-    const isMatch = user.password && await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: "Invalid credentials" });
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials"
+      });
     }
 
-    const token = jwt.sign(
-      { name: user.name, email: user.email, isAdmin: user.role === 'admin', id: user.id },
-      SECRET_KEY,
-      { expiresIn: '1h' }
-    );
+    // Use the prebuilt generateToken function
+    const token = generateToken(user);
 
-    res.json({
+    return res.status(200).json({
       success: true,
-      token,
-      user: { id: user.id, name: user.name, email: user.email, isAdmin: user.role === 'admin' }
+      token
     });
-  } catch (err) {
-    console.error("Login error:", err);
-    res.status(500).json({ success: false, error: "Server error" });
+
+  } catch (error) {
+    console.error("Login error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Internal server error"
+    });
   }
 };
 
-// SIGNUP
+/**
+ * Controller to handle new user registration (signup).
+ * @param {object} req - The Express request object.
+ * @param {object} res - The Express response object.
+ */
 const signup = async (req, res) => {
-  console.log('Signup API hit');
-  const parseResult = userSchema.safeParse(req.body);
-  if (!parseResult.success) {
-    return res.status(400).json({
-      success: false,
-      message: "Validation error.",
-      errors: parseResult.error.errors,
-    });
-  }
-
-  let { name, email, password } = parseResult.data;
-  name = name.trim();
-  email = email.trim().toLowerCase();
-
   try {
-    const existingUser = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
-    if (existingUser.rows.length > 0) {
-      return res.status(400).json({ success: false, message: "User already exists" });
+    const parseResult = userSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation error.",
+        errors: parseResult.error.errors,
+      });
+    }
+    const { name, email, password } = parseResult.data;
+
+    const existingUser = await findUserByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "User already exists"
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const insertResult = await pool.query(
-      "INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id",
-      [name, email, hashedPassword, 'user']
-    );
+    const newUser = await createUser(name, email, hashedPassword, 'user');
 
-    const token = jwt.sign({ name, email, isAdmin: false, id: insertResult.rows[0].id }, SECRET_KEY, { expiresIn: '1h' });
-    res.status(201).json({
+    // Use the prebuilt generateToken function
+    const token = generateToken(newUser);
+
+    return res.status(201).json({
       success: true,
       message: "User registered successfully",
       token,
-      user: { id: insertResult.rows[0].id, name, email, isAdmin: false },
+      user: { name: newUser.name, email: newUser.email, isAdmin: false },
     });
-  } catch (err) {
-    console.error("Signup error:", err);
-    res.status(500).json({ success: false, error: "Something went wrong" });
-  }
-};
 
-// GET USER DETAILS
-const userDetails = async (req, res) => {
-  const { email } = req.params;
-  try {
-    const result = await pool.query("SELECT id, name, email, role FROM users WHERE email = $1", [email.trim()]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
-    res.json({ success: true, user: result.rows[0] });
-  } catch (err) {
-    console.error("Error fetching user:", err);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-};
-
-// SUBMIT FEEDBACK
-const feedback = async (req, res) => {
-  const parseResult = feedbackSchema.safeParse(req.body);
-  if (!parseResult.success) {
-    return res.status(400).json({
+  } catch (error) {
+    console.error("Signup error:", error);
+    return res.status(500).json({
       success: false,
-      message: "Validation error.",
-      errors: parseResult.error.errors,
+      error: "Internal server error"
     });
-  }
-
-  const { complaint_id, user_id, assigned_personnel_id, rating, comment } = parseResult.data;
-
-  try {
-    const existing = await pool.query(
-      "SELECT id FROM feedback WHERE complaint_id = $1",
-      [complaint_id]
-    );
-    if (existing.rows.length > 0) {
-      return res.status(400).json({ success: false, message: "Feedback already submitted." });
-    }
-
-    await pool.query(
-      "INSERT INTO feedback (complaint_id, user_id, assigned_personnel_id, rating, comment) VALUES ($1, $2, $3, $4, $5)",
-      [complaint_id, user_id, assigned_personnel_id, rating, comment]
-    );
-
-    await pool.query(
-      "UPDATE complaints SET feedback_given = TRUE WHERE id = $1",
-      [complaint_id]
-    );
-
-    res.status(200).json({ success: true, message: "Feedback submitted successfully." });
-  } catch (err) {
-    console.error("Feedback error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// FORGOT PASSWORD
-const ForgotPassword = async (req, res) => {
-  const { email } = req.body;
+/**
+ * Controller to fetch public details for a specific user.
+ * @param {object} req - The Express request object.
+ * @param {object} res - The Express response object.
+ */
+const userDetails = async (req, res) => {
   try {
-    const result = await pool.query("SELECT name FROM users WHERE email = $1", [email.trim()]);
-    if (result.rows.length === 0) {
-      return res.status(404).send("User not found");
+    const { email } = req.params;
+    const user = await getUserDetailsByEmail(email);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      user: user
+    });
+  } catch (error) {
+    console.error("Error fetching user details:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
+
+/**
+ * Controller to handle submission of feedback for a complaint.
+ * @param {object} req - The Express request object.
+ * @param {object} res - The Express response object.
+ */
+const feedback = async (req, res) => {
+  try {
+    const parseResult = feedbackSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation error.",
+        errors: parseResult.error.errors,
+      });
+    }
+
+    const { complaint_id, user_id, assigned_personnel_id, rating, comment } = parseResult.data;
+
+    // The addFeedback model function now handles checking, inserting, and updating.
+    await addFeedback(complaint_id, user_id, assigned_personnel_id, rating, comment);
+
+    return res.status(200).json({
+      success: true,
+      message: "Feedback submitted successfully.",
+    });
+
+  } catch (error) {
+    console.error("Error submitting feedback:", error);
+    // Handle the specific error for already submitted feedback
+    if (error.message.includes("already been submitted")) {
+      return res.status(400).json({
+        success: false,
+        message: "Feedback already submitted.",
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      message: "Failed to submit feedback.",
+    });
+  }
+};
+
+/**
+ * Controller to initiate the password reset process.
+ * @param {object} req - The Express request object.
+ * @param {object} res - The Express response object.
+ */
+const ForgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const query = `SELECT name FROM users WHERE email = $1`;
+    const { rows } = await pool.query(query, [email]);
+
+    if (rows.length === 0) {
+      // Still return success to prevent user enumeration
+      return res.status(200).json({ success: true, message: "If a user with that email exists, a reset link has been sent." });
     }
 
     const token = crypto.randomBytes(32).toString("hex");
-    const expiresAt = Date.now() + 1000 * 60 * 60; // 1 hour
+    const expiresAt = Date.now() + 1000 * 60 * 60; // 1 hour validity
+
     resetTokens[token] = { email, expiresAt };
 
     const resetLink = `http://localhost:5173/reset-password/${token}`;
-    console.log("Password reset link:", resetLink);
+    await sendForgotPasswordMail(email, rows[0].name, resetLink);
 
-    await sendForgotPasswordMail(email, result.rows[0].name, resetLink);
-    res.json({ success: true });
-  } catch (err) {
-    console.error("ForgotPassword error:", err);
+    res.json({ success: true, message: "If a user with that email exists, a reset link has been sent." });
+  } catch (error) {
+    console.error("Forgot password error:", error);
     res.status(500).send("Error sending reset email.");
   }
 };
 
-// RESET PASSWORD
+/**
+ * Controller to handle the final password reset with a valid token.
+ * @param {object} req - The Express request object.
+ * @param {object} res - The Express response object.
+ */
 const ResetPassword = async (req, res) => {
-  const { token } = req.params;
-  const { password } = req.body;
-  const entry = resetTokens[token];
-
-  if (!entry || entry.expiresAt < Date.now()) {
-    return res.status(400).send("Invalid or expired token.");
-  }
-
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await pool.query("UPDATE users SET password = $1 WHERE email = $2", [
-      hashedPassword,
-      entry.email.trim(),
-    ]);
+    const { token } = req.params;
+    const { password } = req.body;
+    const entry = resetTokens[token];
 
-    delete resetTokens[token];
+    if (!entry || entry.expiresAt < Date.now()) {
+      return res.status(400).send("Invalid or expired token.");
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const email = entry.email;
+
+    const updateQuery = `UPDATE users SET password = $1 WHERE email = $2`;
+    await pool.query(updateQuery, [hashedPassword, email]);
+
+    delete resetTokens[token]; // Invalidate the token after use
     res.send("Password has been reset successfully. You can now log in.");
-  } catch (err) {
-    console.error("ResetPassword error:", err);
+
+  } catch (error) {
+    console.error("Reset password error:", error);
     res.status(500).json({ error: "Database error while resetting password." });
   }
 };
