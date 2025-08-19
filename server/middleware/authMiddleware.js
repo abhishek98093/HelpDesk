@@ -1,4 +1,5 @@
-const { verifyToken } = require('../utils/utility');
+const { verifyToken } = require("../utils/utility");
+
 
 // ✅ Authenticate Middleware
 const authenticate = (req, res, next) => {
@@ -25,7 +26,7 @@ const authenticate = (req, res, next) => {
 
 const authorise = (roles = []) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.user_role)) {
+    if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Access denied. You are not authorised to perform this action.',
