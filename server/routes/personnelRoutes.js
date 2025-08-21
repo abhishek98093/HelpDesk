@@ -4,11 +4,15 @@ const {
   getPersonnels,
   getAvailablePersonnels,
   addPersonnels
-} = require("../controllers/personnelController"); // Controllers will use PostgreSQL pool internally
+} = require("../controllers/personnelController");
+const { authenticate, authorise } = require("../middleware/authMiddleware");
+// GET all personnel records
+router.get("/",authenticate,authorise(['admin','user']), getPersonnels);
 
-// Routes
-router.get("/", getPersonnels);
-router.get("/available/:role", getAvailablePersonnels);
-router.post("/", addPersonnels);
+// GET available personnel filtered by role
+router.get("/available/:role",authenticate,authorise(['admin','user']), getAvailablePersonnels);
+
+// POST a new personnel record
+router.post("/",authenticate,authorise(['admin','user']), addPersonnels);
 
 module.exports = router;
