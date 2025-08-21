@@ -1,23 +1,31 @@
 const express = require('express');
 const router = express.Router();
-const { 
-  signup, 
-  login, 
-  userDetails, 
+const {
+  signup,
+  login,
+  userDetails,
   feedback,
   ForgotPassword,
   ResetPassword
 } = require('../controllers/userController');
-const { userMiddleware } = require('../utils/auth');
+const { authorise, authenticate } = require('../middleware/authMiddleware');
 
-// Auth & user routes
+// Route for user login
 router.post('/login', login);
-router.post('/signup', signup);
-router.post('/forgot-password', ForgotPassword);
-router.post('/reset-password/:token', ResetPassword);
 
-// Protected routes
-router.post('/feedback', userMiddleware, feedback);
-router.get('/users/:email', userMiddleware, userDetails);
+// Route for new user registration
+router.post('/signup', signup);
+
+// Route to initiate the password reset process
+router.post("/forgot-password", ForgotPassword);
+
+// Route to finalize the password reset with a token
+router.post("/reset-password/:token", ResetPassword);
+
+// Route to submit feedback, protected by middleware
+router.post("/feedback", authenticate,authorise(['admin','user']), feedback);
+
+// Route to get a user's details, protected by middleware
+router.get("/:email", authenticate,authorise(['admin','user']), userDetails);
 
 module.exports = router;
