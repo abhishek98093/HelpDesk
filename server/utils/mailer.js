@@ -8,11 +8,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-/**
- * Sends an email using Nodemailer transporter
- * @param {Object} options - mail options like { to, subject, html }
- * @returns {Promise}
- */
+
 const sendMail = (options) => {
   return new Promise((resolve, reject) => {
     transporter.sendMail(
@@ -31,13 +27,7 @@ const sendMail = (options) => {
   });
 };
 
-/**
- * Generates the HTML content for ticket submission email
- * @param {string} name - User's name
- * @param {string} type - Complaint type
- * @param {string} code - Ticket code
- * @returns {string} - HTML string
- */
+
 const generateTicketSubmissionHTML = (name, type, code) => {
   return `
     <div style="font-family: Arial, sans-serif; padding: 20px;">
@@ -52,14 +42,7 @@ const generateTicketSubmissionHTML = (name, type, code) => {
   `;
 };
 
-/**
- * Sends a predefined ticket submission mail
- * @param {string} email - Receiver's email
- * @param {string} name - User's name
- * @param {string} type - Complaint type
- * @param {string} code - Ticket code
- * @returns {Promise}
- */
+
 const sendTicketSubmissionMail = (email, name, type, code) => {
   const htmlContent = generateTicketSubmissionHTML(name, type, code);
 
@@ -70,15 +53,7 @@ const sendTicketSubmissionMail = (email, name, type, code) => {
   });
 };
 
-/**
- * Generates the HTML content for personnel assignment email
- * @param {string} name - User's name
- * @param {string} type - Complaint type
- * @param {string} assignedName - Name of the assigned personnel
- * @param {string} assignedContact - Contact of the assigned personnel
- * @param {string} code - Ticket code
- * @returns {string} - HTML string
- */
+
 const generateAssignedPersonnelHTML = (name, type, assignedName, assignedContact) => {
   return `
     <div style="font-family: Arial, sans-serif; padding: 20px;">
@@ -103,13 +78,7 @@ const adminAssignedPersonnelMail = (email, name, type, assignedName, assignedCon
   })
 };
 
-/**
- * Generates the HTML content for complaint resolution email
- * @param {string} name - User's name
- * @param {string} type - Complaint type
- * @param {string} code - Ticket code
- * @returns {string} - HTML string
- */
+
 const generateComplaintResolvedHTML = (name, type) => {
   return `
     <div style="font-family: Arial, sans-serif; padding: 20px;">
@@ -124,14 +93,7 @@ const generateComplaintResolvedHTML = (name, type) => {
     </div>
   `;
 };
-/**
- * Sends an email to notify user that complaint has been resolved
- * @param {string} email - Receiver's email
- * @param {string} name - User's name
- * @param {string} type - Complaint type
- * @param {string} code - Ticket code
- * @returns {Promise}
- */
+
 const complaintResolvedMail = (email, name, type) => {
   const htmlResolved = generateComplaintResolvedHTML(name, type);
   return sendMail({
