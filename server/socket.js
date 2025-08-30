@@ -10,7 +10,6 @@ const connectSocket = (server) => {
     }
   });
 
-  // Store mapping of userId <-> socketId
   const users = new Map();
   function emitUserListToAdmins() {
     const userList = Array.from(users.keys());
@@ -23,25 +22,21 @@ const connectSocket = (server) => {
   io.on("connection", (socket) => {
     console.log("A client connected:", socket.id);
 
-    // User joins: send { userId, isAdmin }
     socket.on("join", ({ userId, isAdmin }) => {
       socket.userId = userId;
       socket.isAdmin = isAdmin;
       if (!isAdmin) {
         users.set(userId, socket.id);
-        emitUserListToAdmins(); // update admin user list
+        emitUserListToAdmins(); 
       } else {
-        // Send current user list to admin on join
         socket.emit("userList", Array.from(users.keys()));
       }
     });
 
      socket.on("userMessage", ({ userId, message }) => {
-      // ...existing code...
-      emitUserListToAdmins(); // update admin user list
+      emitUserListToAdmins(); 
     });
 
-    // Admin replies to a specific user
     socket.on("adminReply", ({ userId, message }) => {
       console.log(`Admin reply to ${userId}: ${message}`);
       if (!socket.isAdmin) return;
