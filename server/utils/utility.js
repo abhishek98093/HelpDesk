@@ -3,11 +3,7 @@ require('dotenv').config();
 
 const SECRET_KEY = process.env.SECRET_KEY;
 
-/**
- * Generates a JWT token with user details.
- * @param {Object} user - The user object.
- * @returns {string} JWT token valid for 1 hour.
- */
+
 const generateToken = (user) => {
   return jwt.sign(
     {
@@ -22,12 +18,7 @@ const generateToken = (user) => {
   );
 };
 
-/**
- * Verifies a JWT token.
- * @param {string} token - The JWT token.
- * @returns {Object} Decoded payload.
- * @throws {Error} If token is invalid or expired.
- */
+
 const verifyToken = (token) => {
   return jwt.verify(token, SECRET_KEY);
 };
